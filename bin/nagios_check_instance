@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+import sys
+from operator import attrgetter
+from optparse import OptionParser
+
+import boto
+from boto.ec2 import regions
+
+
+NAGIOS_OK = 0
+NAGIOS_CRITICAL = 2
+
+def get_column(name, instance=None):
+    if name.startswith('T:'):
+        _, tag = name.split(':', 1)
+        return instance.tags.get(tag, '')
+    return HEADERS[name]['get'](instance)
+
+
+def main():
+    parser = OptionParser()
+    parser.add_option("-r", "--region", help="Region (default us-east-1)", dest="region", default="us-east-1")
+    (options, args) = parser.parse_args()
+
+    instance_id = args[0]
+
+    if(not instance_id):
+        print "Instance ID required as first argument"
+        sys.exit(1)
+
+    # Connect the region
+    for r in regions():
+        if r.name == options.region:
+            region = r
+            break
+    else:
+        print "Region %s not found." % options.region
+        sys.exit(1)
+    ec2 = boto.connect_ec2(region=region)
+
+    # List and print
+    for r in ec2.get_all_instances():
+        groups = [g.id for g in r.groups]
+        for i in r.instances:
+            if(i.id == instance_id):
+                if(i.state == 'running'):
+                    sys.exit(NAGIOS_OK)
+                else:
+                    print "Instance id %s is not running, state is %s" % (i.id, i.state)
+                    sys.exit(NAGIOS_CRITICAL)
+
+    print "Instance id %s cannot be found" % instance_id
+    sys.exit(NAGIOS_CRITICAL)
+
+if __name__ == "__main__":
+    main()
