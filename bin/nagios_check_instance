@@ -23,11 +23,11 @@ def main():
     parser.add_option("-r", "--region", help="Region (default us-east-1)", dest="region", default="us-east-1")
     (options, args) = parser.parse_args()
 
-    instance_id = args[0]
-
-    if(not instance_id):
+    if(len(args) == 0):
         print "Instance ID required as first argument"
         sys.exit(1)
+
+    instance_id = args[0]
 
     # Connect the region
     for r in regions():
